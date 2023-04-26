@@ -1,0 +1,13 @@
+Parameters:
+  Project:
+    AllowedPattern: ^[a-z0-9]+$
+    ConstraintDescription: Must only contain lowercase letters and numbers
+    Default: global
+    Description: Name of current project
+    Type: String
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref 'Project'
+      RetentionInDays: '7'

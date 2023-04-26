@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: IAM project Top stack
+Parameters:
+  Project:
+    AllowedPattern: ^[a-z0-9]+$
+    ConstraintDescription: Must only contain lowercase letters and numbers
+    Default: global
+    Description: Name of current project
+    Type: String
+Resources:
+  RoleEKSCluster:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service: eks.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEKSClusterPolicy'
+  RoleEKSFargatePodExecution:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service: eks-fargate-pods.amazonaws.com
+        Version: 2012-10-17
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - ecr:*
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: '*'
+          PolicyName: !Ref 'AWS::StackName'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy'
+  UserEKSAdmin1:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub '${Project}-eks-admin-1'
+      Groups:
+        - 'Admin'
+  UserEKSAdmin2:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub '${Project}-eks-admin-2'
+      Groups:
+        - 'Admin'
+Outputs:
+  RoleEKSClusterArn:
+    Description: The Amazon Resource Name of the role that will be assumed by the AWS EKS Cluster
+    Value: !GetAtt 'RoleEKSCluster.Arn'
+  RoleEKSClusterName:
+    Description: The name of the role that will be assumed by AWS EKS Cluster
+    Value: !Ref 'RoleEKSCluster'
+  RoleEKSFargatePodExecutionArn:
+    Description: The Amazon Resource Name of the role that will be assumed by AWS EKS Fargate Pods
+    Value: !GetAtt 'RoleEKSFargatePodExecution.Arn'
+  RoleEKSFargatePodExecutionName:
+    Description: The name of the role that will be assumed by AWS EKS Fargate Pods
+    Value: !Ref 'RoleEKSFargatePodExecution'

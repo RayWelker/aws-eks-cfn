@@ -1,0 +1,50 @@
+global:
+  account: '245240539414'
+  sync_dest_bucket: shared-deployer-bucketcloudtools-1igswl0w5azx9 #cloudtools-us-east-1-245240539414
+  # template_bucket: shared-deployer-bucketcloudtools-1igswl0w5azx9 #cloudtools-us-east-1-245240539414
+  sync_base: ./
+  sync_exclude:
+    - .swp
+    - .git
+    - .DS_Store
+    - README.md
+  parameters:
+    Environment: shared
+  tags:
+    Environment: shared
+
+deployer:
+  release: develop
+  stack_name: shared-deployer
+  template: /Users/ray/Projects/EKS/cloudformation/deployer/top.yaml
+  parameters: {}
+
+eks:
+  release: develop
+  stack_name: shared-eks
+  template: /Users/ray/Projects/EKS/cloudformation/eks/top.yaml
+  sync_dirs:
+    - cloudformation/eks
+  parameters:
+    KubernetesVersion: '1.24'
+    Network: shared
+    Project: eksdemo
+    SupernetService: private
+
+vpc:
+  release: develop
+  stack_name: shared-vpc
+  template: /Users/ray/Projects/EKS/cloudformation/vpc/top.yaml
+  sync_dirs:
+    - cloudformation/vpc
+  parameters:
+    CreatePublicSubnet: 'true'
+    Cidr: 10.138.0.0/16
+    DomainOwner: 'true'
+    DomainPrivate: mycompany.com
+    EnableFlowLogs: 'false'
+    NetworkName: 'shared'
+    Project: eksdemo
+    SupernetNames: public,private
+    TotalAzs: '3'
+    

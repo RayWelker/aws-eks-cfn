@@ -1,0 +1,79 @@
+Parameters:
+  EksClusterRoleArn:
+    Description: ARN for the EKS Cluster Role
+    Type: String
+  FargateExecutionRoleArn:
+    Description: ARN for the EKS Fargate Pods execution Role
+    Type: String
+  KubernetesVersion:
+    Default: '1.24'
+    Description: String value for the Kubernetes version
+    Type: String
+  Project:
+    AllowedPattern: ^[a-z0-9]+$
+    ConstraintDescription: Must only contain lowercase letters and numbers
+    Default: global
+    Description: Name of current project
+    Type: String
+  Subnets:
+    Description: List of subnet ID's where the EKS Cluster should be deployed
+    Type: AWS::SSM::Parameter::Value<List<AWS::EC2::Subnet::Id>>
+Resources:
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Sub '${Project}-cluster'
+      Version: !Ref 'KubernetesVersion'
+      RoleArn: !Ref 'EksClusterRoleArn'
+      ResourcesVpcConfig:
+        # SecurityGroupIds:
+        #   - sg-6979fe18
+        SubnetIds: !Ref 'Subnets'
+        EndpointPublicAccess: true
+        EndpointPrivateAccess: true
+        PublicAccessCidrs: [ "99.59.192.140/32" ]
+      Logging:
+        ClusterLogging:
+          EnabledTypes:
+            - Type: api
+            - Type: audit
+      Tags:
+        - Key: Project
+          Value: !Ref 'Project'
+  EKSCoreDNSAddon:
+    Type: AWS::EKS::Addon
+    Properties: 
+      AddonName: coredns
+      ClusterName: !Ref 'EKSCluster'
+  EKSCoreDNSFargateProfile:
+    Type: 'AWS::EKS::FargateProfile'
+    Properties:
+      FargateProfileName: !Sub 'CoreDNS'
+      ClusterName: !Ref 'EKSCluster'
+      PodExecutionRoleArn: !Ref 'FargateExecutionRoleArn'
+      Subnets: !Ref 'Subnets'
+      Selectors:
+        - Namespace: kube-system
+          Labels:
+            - Key: k8s-app
+              Value: kube-dns
+  EKSDefaultFargateProfile:
+    Type: 'AWS::EKS::FargateProfile'
+    Properties:
+      FargateProfileName: 'Default'
+      ClusterName: !Ref 'EKSCluster'
+      PodExecutionRoleArn: !Ref 'FargateExecutionRoleArn'
+      Subnets: !Ref 'Subnets'
+      Selectors:
+        - Namespace: default
+  EKSOIDCProvider:
+    Type: 'AWS::IAM::OIDCProvider'
+    Properties:
+      ClientIdList:
+        - "sts.amazonaws.com"
+      ThumbprintList:
+        - "917E732D330F9A12404F73D8BEA36948B929DFFC"
+        - "6B3EB618CA61696A2C216BB3CDAC635C694A6616"
+        - "06B25927C42A721631C1EFD9431E648FA62E1E39"
+        - "9E99A48A9960B14926BB7F3B02E22DA2B0AB7280"
+      Url: !GetAtt 'EKSCluster.OpenIdConnectIssuerUrl'

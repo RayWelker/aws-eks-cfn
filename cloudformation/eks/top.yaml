@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: EKS project Top stack
+Parameters:
+  BucketCloudTools:
+    Default: /global/buckets/cloudtools/name
+    Description: S3 bucket holding CloudFormation templates
+    Type: AWS::SSM::Parameter::Value<String>
+  KubernetesVersion:
+    Default: '1.24'
+    Description: String value for the Kubernetes version
+    Type: String
+  Project:
+    AllowedPattern: ^[a-z0-9]+$
+    ConstraintDescription: Must only contain lowercase letters and numbers
+    Default: global
+    Description: Name of current project
+    Type: String
+  Release:
+    Description: Release name
+    Type: String
+  SupernetService:
+    AllowedPattern: ^[a-z0-9]{3,32}$
+    ConstraintDescription: Must be between 3-32 characters. Can only contain lowercase letters and numbers.
+    Description: The name of the supernet where the service should be deployed
+    Type: String
+  Network:
+    AllowedPattern: ^[a-z0-9]{3,32}$
+    ConstraintDescription: Must be between 3-32 characters. Can only contain lowercase letters and numbers.
+    Default: default
+    Description: Name of the network to deploy Active Directory to
+    Type: String
+Resources:
+  Cloudwatch:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/eks/cloudwatch.yaml'
+      Parameters:
+        Project: !Ref 'Project'
+  Iam:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/eks/iam.yaml'
+      Parameters:
+        Project: !Ref 'Project'
+  Eks:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/eks/eks.yaml'
+      Parameters:
+        EksClusterRoleArn: !GetAtt 'Iam.Outputs.RoleEKSClusterArn'
+        FargateExecutionRoleArn: !GetAtt 'Iam.Outputs.RoleEKSFargatePodExecutionArn'
+        KubernetesVersion: !Ref 'KubernetesVersion'
+        Project: !Ref 'Project'
+        Subnets: !Sub '/networks/${Network}/subnets/${SupernetService}/ids'
